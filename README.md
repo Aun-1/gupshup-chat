@@ -2,7 +2,7 @@
 
 A Flask-based chat web application. Gupshup means chitchat in Urdu/Punjabi.
 
-**Live:** [gupshup.maqamar.com/contacts](https://gupshup.maqamar.com/contacts)
+**Live:** [gupshup.maqamar.com/contacts](https://gupshup.maqamar.com)
 
 ---
 
