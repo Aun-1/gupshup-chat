@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+*.egg-info/
+ 
+# Local database (contains real usernames/passwords from testing)
+instance/
+ 
+# Uploaded media (profile pics, chat attachments from testing)
+static/uploads/
+ 
+# Env files, if you ever create one
+.env
+ 
+# Editor/OS junk
+.vscode/
+.DS_Store
+ 

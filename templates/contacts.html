@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head><title>WhatsUp & GupShup</title><link rel="stylesheet" href="/static/style.css"></head>
+<body>
+<div class="app-container">
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2>&#128172; WhatsUp & GupShup</h2>
+            <div class="header-actions">
+                <a href="/profile" class="icon-btn" title="Profile">&#128100;</a>
+                <a href="/blocked" class="icon-btn" title="Blocked Users">&#128683;</a>
+                <a href="/logout" class="icon-btn" title="Logout" onclick="return confirm('Logout?')">&#128682;</a>
+            </div>
+        </div>
+        <div class="search-box">
+            <form method="get">
+                <input type="text" name="search" placeholder="Search username..." value="{{ search }}">
+                <button type="submit">&#128269;</button>
+            </form>
+        </div>
+        <div class="contacts-list" id="contactsList">
+            {% if user_data %}
+                {% for item in user_data %}
+                <div class="contact-item-wrapper">
+                    <a href="/chat/{{ item.user.username }}" class="contact-item">
+                        {% if item.user.profile_pic %}
+                        <img src="/static/{{ item.user.profile_pic }}" class="avatar-img">
+                        {% else %}
+                        <div class="avatar">{{ item.user.username[0].upper() }}</div>
+                        {% endif %}
+                        <div class="contact-info">
+                            <span class="contact-name">{{ item.user.username }}</span>
+                            {% if item.last_msg %}
+                            <span class="last-msg">
+                                {% if item.last_msg.sender == user %}You: {% endif %}
+                                {% if item.last_msg.text %}{{ item.last_msg.text[:40] }}{% elif item.last_msg.media_type == 'image' %}&#128247; Image{% else %}&#128206; File{% endif %}
+                            </span>
+                            {% endif %}
+                        </div>
+                        {% if item.unread > 0 %}
+                        <span class="unread-badge">{{ item.unread }}</span>
+                        {% endif %}
+                    </a>
+                    <div class="contact-actions">
+                        <a href="/block/{{ item.user.username }}" class="block-btn" title="Block user"
+                           onclick="return confirm('Block {{ item.user.username }}?')">&#128683;</a>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p class="no-users">No users found</p>
+            {% endif %}
+        </div>
+    </div>
+    <div class="welcome-screen">
+        <div class="welcome-content">
+            <div class="welcome-icon">&#128172;</div>
+            <h2>WhatsUp & GupShup</h2>
+            <p>Select a contact to start chatting!</p>
+        </div>
+    </div>
+</div>
+
+<script>
+const currentUser = {{ user | tojson }};
+let lastContactsJson = '';
+
+function escapeHtml(str) {
+    const d = document.createElement('div');
+    d.appendChild(document.createTextNode(str || ''));
+    return d.innerHTML;
+}
+
+function buildContactRow(item) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'contact-item-wrapper';
+
+    const link = document.createElement('a');
+    link.href = '/chat/' + encodeURIComponent(item.username);
+    link.className = 'contact-item';
+
+    const avatarHtml = item.profile_pic
+        ? '<img src="/static/' + item.profile_pic + '" class="avatar-img">'
+        : '<div class="avatar">' + escapeHtml(item.username[0].toUpperCase()) + '</div>';
+
+    let lastMsgHtml = '';
+    if (item.last_msg) {
+        const prefix = item.last_msg.sender === currentUser ? 'You: ' : '';
+        let body;
+        if (item.last_msg.kind === 'text') body = escapeHtml(item.last_msg.preview);
+        else if (item.last_msg.kind === 'image') body = '&#128247; Image';
+        else body = '&#128206; File';
+        lastMsgHtml = '<span class="last-msg">' + prefix + body + '</span>';
+    }
+
+    const unreadHtml = item.unread > 0 ? '<span class="unread-badge">' + item.unread + '</span>' : '';
+
+    link.innerHTML = avatarHtml +
+        '<div class="contact-info"><span class="contact-name">' + escapeHtml(item.username) + '</span>' + lastMsgHtml + '</div>' +
+        unreadHtml;
+
+    const actions = document.createElement('div');
+    actions.className = 'contact-actions';
+    const blockLink = document.createElement('a');
+    blockLink.href = '/block/' + encodeURIComponent(item.username);
+    blockLink.className = 'block-btn';
+    blockLink.title = 'Block user';
+    blockLink.innerHTML = '&#128683;';
+    blockLink.onclick = function() { return confirm('Block ' + item.username + '?'); };
+    actions.appendChild(blockLink);
+
+    wrapper.appendChild(link);
+    wrapper.appendChild(actions);
+    return wrapper;
+}
+
+function refreshContacts() {
+    const search = new URLSearchParams(window.location.search).get('search') || '';
+    fetch('/api/contacts?search=' + encodeURIComponent(search))
+        .then(r => r.json())
+        .then(items => {
+            const asJson = JSON.stringify(items);
+            if (asJson === lastContactsJson) return;
+            lastContactsJson = asJson;
+
+            const list = document.getElementById('contactsList');
+            list.innerHTML = '';
+            if (!items.length) {
+                list.innerHTML = '<p class="no-users">No users found</p>';
+                return;
+            }
+            items.forEach(item => list.appendChild(buildContactRow(item)));
+        })
+        .catch(() => {});
+}
+
+refreshContacts();
+setInterval(refreshContacts, 3000);
+</script>
+</body>
+</html>

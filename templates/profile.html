@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head><title>WhatsUp & GupShup - Profile</title><link rel="stylesheet" href="/static/style.css"></head>
+<body>
+<div class="auth-container">
+    <div class="auth-logo">
+        {% if user.profile_pic %}
+        <img src="/static/{{ user.profile_pic }}" class="profile-pic-large">
+        {% else %}
+        <div class="avatar-large">{{ user.username[0].upper() }}</div>
+        {% endif %}
+    </div>
+    <h1 class="brand">WhatsUp & GupShup</h1>
+    <h2>{{ user.username }}</h2>
+    <form method="post" enctype="multipart/form-data">
+        <label class="file-label">
+            Change Profile Picture
+            <input type="file" name="profile_pic" accept="image/*">
+        </label>
+        <button type="submit">Save</button>
+    </form>
+    <a href="/contacts" class="back-link">← Back to Chats</a>
+</div>
+</body>
+</html>

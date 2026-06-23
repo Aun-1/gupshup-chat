@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WhatsUp & GupShup - {{ other }}</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="app-container">
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2>&#128172; WhatsUp & GupShup</h2>
+            <div class="header-actions">
+                <a href="/profile" class="icon-btn" title="Profile">&#128100;</a>
+                <a href="/blocked" class="icon-btn" title="Blocked Users">&#128683;</a>
+                <a href="/logout" class="icon-btn" title="Logout" onclick="return confirm('Logout?')">&#128682;</a>
+            </div>
+        </div>
+        <div class="search-box">
+            <form method="get" action="/contacts">
+                <input type="text" name="search" placeholder="Search username...">
+                <button type="submit">&#128269;</button>
+            </form>
+        </div>
+        <div class="contacts-list">
+            <a href="/contacts" class="contact-item">
+                <div class="avatar">&#128101;</div>
+                <div class="contact-info">
+                    <span class="contact-name">All Contacts</span>
+                </div>
+            </a>
+        </div>
+    </div>
+    <div class="chat-area">
+        <div class="chat-header">
+            {% if other_user and other_user.profile_pic %}
+            <img src="/static/{{ other_user.profile_pic }}" class="avatar-img">
+            {% else %}
+            <div class="avatar">{{ other[0].upper() }}</div>
+            {% endif %}
+            <span class="chat-username">{{ other }}</span>
+            {% if i_blocked %}
+            <a href="/unblock/{{ other }}" class="unblock-chat-btn" title="Unblock user">&#9989; Unblock</a>
+            {% else %}
+            <a href="/block/{{ other }}" class="block-chat-btn" title="Block user"
+               onclick="return confirm('Block {{ other }}?')">&#128683; Block</a>
+            {% endif %}
+        </div>
+        <div class="messages" id="messages"></div>
+        {% if not i_blocked %}
+        <form method="post" class="message-form" enctype="multipart/form-data" id="msgForm">
+            <label class="attach-btn" title="Attach file">
+                &#128206;
+                <input type="file" name="media" accept="image/*,.pdf,.doc,.docx,.txt,.zip" style="display:none" onchange="showFileName(this)">
+            </label>
+            <span id="fileNameLabel"></span>
+            <input type="text" name="text" id="msgInput" placeholder="Type a message..." autocomplete="off">
+            <button type="submit">Send</button>
+        </form>
+        {% else %}
+        <div class="blocked-notice">
+            You have blocked this user.
+            <a href="/unblock/{{ other }}">Unblock</a> to send messages.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+const currentUser = {{ user | tojson }};
+const otherUser = {{ other | tojson }};
+let lastId = 0;
+
+function escapeHtml(str) {
+    const d = document.createElement('div');
+    d.appendChild(document.createTextNode(str || ''));
+    return d.innerHTML;
+}
+
+function showFileName(input) {
+    document.getElementById('fileNameLabel').textContent = input.files[0] ? input.files[0].name : '';
+}
+
+function buildMessage(msg) {
+    const div = document.createElement('div');
+    div.className = 'message ' + (msg.sender === currentUser ? 'sent' : 'received');
+    let content = '';
+    if (msg.text) content += '<span class="text">' + escapeHtml(msg.text) + '</span>';
+    if (msg.media_type === 'image') {
+        content += '<img src="/static/' + msg.media_path + '" class="msg-image" onclick="window.open(this.src)">';
+    } else if (msg.media_type === 'file') {
+        const rawName = msg.media_path.split('/').pop();
+        const displayName = rawName.includes('_') ? rawName.substring(rawName.indexOf('_') + 1) : rawName;
+        content += '<a href="/static/' + msg.media_path + '" class="file-link" download="' + escapeHtml(displayName) + '">&#128206; ' + escapeHtml(displayName) + '</a>';
+    }
+    div.innerHTML = '<span class="sender">' + escapeHtml(msg.sender) + '</span>' + content + '<span class="time">' + msg.timestamp + '</span>';
+    return div;
+}
+
+function loadInitial() {
+    fetch('/api/messages/' + encodeURIComponent(otherUser))
+        .then(r => r.json())
+        .then(messages => {
+            const container = document.getElementById('messages');
+            messages.forEach(msg => {
+                container.appendChild(buildMessage(msg));
+                if (msg.id > lastId) lastId = msg.id;
+            });
+            container.scrollTop = container.scrollHeight;
+        });
+}
+
+function loadNew() {
+    fetch('/api/messages/' + encodeURIComponent(otherUser) + '?since=' + lastId)
+        .then(r => r.json())
+        .then(messages => {
+            if (!messages.length) return;
+            const container = document.getElementById('messages');
+            const atBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 60;
+            messages.forEach(msg => {
+                container.appendChild(buildMessage(msg));
+                if (msg.id > lastId) lastId = msg.id;
+            });
+            if (atBottom) container.scrollTop = container.scrollHeight;
+        });
+}
+
+loadInitial();
+setInterval(loadNew, 3000);
+
+const msgForm = document.getElementById('msgForm');
+if (msgForm) {
+    msgForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(msgForm);
+        const text = formData.get('text');
+        const file = formData.get('media');
+        if (!text.trim() && (!file || !file.size)) return;
+
+        const submitBtn = msgForm.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+
+        fetch(window.location.pathname, { method: 'POST', body: formData })
+            .then(() => {
+                msgForm.reset();
+                document.getElementById('fileNameLabel').textContent = '';
+                loadNew();
+            })
+            .catch(() => {
+                alert('Message failed to send. Check your connection and try again.');
+            })
+            .finally(() => {
+                submitBtn.disabled = false;
+                document.getElementById('msgInput').focus();
+            });
+    });
+}
+</script>
+</body>
+</html>

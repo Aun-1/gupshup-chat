@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head><title>WhatsUp & GupShup - Blocked Users</title><link rel="stylesheet" href="/static/style.css"></head>
+<body>
+<div class="auth-container">
+    <h1 class="brand">&#128172; WhatsUp & GupShup</h1>
+    <h2>Blocked Users</h2>
+    <br>
+    {% if users %}
+        {% for u in users %}
+        <div class="blocked-user-row">
+            <div class="blocked-user-info">
+                {% if u.profile_pic %}
+                <img src="/static/{{ u.profile_pic }}" class="avatar-img">
+                {% else %}
+                <div class="avatar">{{ u.username[0].upper() }}</div>
+                {% endif %}
+                <span class="contact-name">{{ u.username }}</span>
+            </div>
+            <a href="/unblock/{{ u.username }}" class="unblock-link">&#9989; Unblock</a>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p class="no-users">No blocked users.</p>
+    {% endif %}
+    <a href="/contacts" class="back-link">&#8592; Back to Contacts</a>
+</div>
+</body>
+</html>
